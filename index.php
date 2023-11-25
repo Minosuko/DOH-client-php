@@ -1,6 +1,17 @@
 <?php
-header("Content-Type: application/dns-message");
-//header("Content-Type: text/plain");
+if(!file_exists("./cache/cache.rw")){
+	if(is_file("./cache") && !is_dir("./cache")){
+		unlink("./cache");
+		mkdir("./cache",0777,true);
+	}else{
+		file_put_contents("./cache/cache.rw","RW");
+	}
+}else{
+	mkdir("./cache",0777,true);
+}
+session_cache_limiter('public');
+session_cache_expire(5);
+
 /* Domain str to DNS raw qname */
 function doh_domain2raw($domainname)
 {
@@ -195,7 +206,24 @@ $list = json_decode(file_get_contents("config.json"),true);
 if(in_array($domain, $list["block"]))
 	die(0);
 $dnsrawresults = doh_connect_https($raw);
+$cache_domain = "./cache/".md5($domain).".cache";
+if(!file_exists($cache_domain))
+	file_put_contents($cache_domain,$dnsrawresults);
+header("Content-Type: application/dns-message");
+header("Cache-Control: max-age=300, s-maxage=300");
+header("Connection: keep-alive");
+
+$lastModified = filemtime($cache_domain);
+$etagFile = md5_file($cache_domain);
+
+header("Last-Modified: ". gmdate("D, d M Y H:i:s", time()) ." GMT");
+header("Etag: $etagFile");
+$ifModifiedSince=(isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? $_SERVER['HTTP_IF_MODIFIED_SINCE'] : false);
+$etagHeader=(isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim($_SERVER['HTTP_IF_NONE_MATCH']) : false);
+if (@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])==$lastModified || $etagHeader==$etagFile )
+{
+	header("HTTP/1.1 304 Not Modified");
+	die();
+}
 echo $dnsrawresults;
-//file_put_contents("query.txt", $raw);
-//file_put_contents("result.txt",$dnsrawresults);
 ?>
