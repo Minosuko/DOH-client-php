@@ -216,8 +216,10 @@ header("Connection: keep-alive");
 $lastModified = filemtime($cache_domain);
 $etagFile = md5_file($cache_domain);
 
-header("Last-Modified: ". gmdate("D, d M Y H:i:s", time()) ." GMT");
+header("Last-Modified: ". gmdate("D, d M Y H:i:s", $lastModified) ." GMT");
 header("Etag: $etagFile");
+
+
 $ifModifiedSince=(isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? $_SERVER['HTTP_IF_MODIFIED_SINCE'] : false);
 $etagHeader=(isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim($_SERVER['HTTP_IF_NONE_MATCH']) : false);
 if (@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])==$lastModified || $etagHeader==$etagFile )
@@ -225,5 +227,6 @@ if (@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])==$lastModified || $etagHeader
 	header("HTTP/1.1 304 Not Modified");
 	die();
 }
+file_put_contents($cache_domain,$dnsrawresults);
 echo $dnsrawresults;
 ?>
